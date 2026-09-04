@@ -1,0 +1,35 @@
+services:
+  ai-service:
+    build: ./services/ai-service
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-demo}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4.1-mini}
+    volumes:
+      - ./knowledge:/app/knowledge:ro
+      - ./evals:/app/evals:ro
+      - ai-data:/app/data
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  api:
+    build: ./services/api
+    environment:
+      AI_SERVICE_URL: http://ai-service:8000
+    ports: ["8080:8080"]
+    depends_on:
+      ai-service:
+        condition: service_healthy
+  web:
+    build: ./apps/web
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports: ["3000:80"]
+    depends_on: [api]
+volumes:
+  ai-data:
+
